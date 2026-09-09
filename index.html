@@ -113,6 +113,15 @@
             user-select: none; touch-action: manipulation;
         }
         .m-btn:active { background: rgba(255,255,255,0.3); }
+        
+        /* New Sprint Button Style */
+        #m-fast {
+            background: rgba(212, 175, 55, 0.2);
+            border-color: rgba(212, 175, 55, 0.5);
+            color: #d4af37;
+            font-weight: bold;
+        }
+        #m-fast:active { background: rgba(212, 175, 55, 0.5); }
 
         #quote-container { pointer-events: auto; max-width: 350px; }
         .title-font { font-family: 'Cinzel', serif; color: #d4af37; }
@@ -166,12 +175,12 @@
 
     <div id="ui-layer">
         <div class="flex justify-between items-start w-full">
-            <div class="title-font text-2xl tracking-widest drop-shadow-md" id="loc-title">CHANDNI CHOWK</div>
-            <div class="text-xs text-gray-400 font-mono text-right" id="loc-sub">SECTOR 4 // EVENING CYCLE<br>CAM: 04 // EXTERIOR</div>
+            <div class="title-font text-2xl tracking-widest drop-shadow-md text-white" id="loc-title">CHANDNI CHOWK</div>
+            <div class="text-xs text-white/80 font-mono text-right" id="loc-sub">SECTOR 4 // EVENING CYCLE<br>CAM: 04 // EXTERIOR</div>
         </div>
         
-        <div id="quote-container" class="bg-black/40 p-4 border-l-2 border-[#d4af37] backdrop-blur-sm">
-            <p class="text-sm text-gray-200 italic mb-2">"Here, in these narrow lanes, history is woven into every thread and every sunset."</p>
+        <div id="quote-container" class="bg-black/40 p-4 border-l-2 border-[#d4af37] backdrop-blur-sm rounded-r-lg">
+            <p class="text-sm text-gray-100 italic mb-2" id="quote-text">"Here, in these narrow lanes, history is woven into every thread and every sunset."</p>
             <p class="text-xs text-[#d4af37] font-semibold tracking-wide uppercase">- The Artisan</p>
         </div>
     </div>
@@ -179,6 +188,7 @@
     <div id="mobile-controls">
         <div class="m-btn" id="m-rev">▼</div>
         <div class="m-btn" id="m-fwd">▲</div>
+        <div class="m-btn" id="m-fast">⏩</div>
     </div>
 
     <!-- Shop Interaction Modal -->
@@ -231,7 +241,7 @@
                 sub: "BRIDAL & COUTURE // DUSK",
                 lightColor: 0xffaa55, skyTop: '#5a4f7c', skyBottom: '#ff9a76', ground: 0xc9866e,
                 shops: [
-                    { name: "Asiana Couture", desc: "High-end bridal lehengas, contemporary designs." },
+                    { name: "Asiana Couture", desc: "High-end bridal lehengas, contemporary designs & heavy embroidery." },
                     { name: "Om Parkash Jawahar Lal", desc: "Heritage luxury bridal wear & premium weaves." },
                     { name: "Payal Keyal", desc: "Modern reception gowns & experimental silhouettes." },
                     { name: "Sudhir Bhai Saree Wala", desc: "Trusted traditional red bridal lehengas." },
@@ -241,41 +251,44 @@
                     { name: "Kanchan Fashion", desc: "Fixed-price trendy ethnic and bridal wear." },
                     { name: "Kundans Bridal", desc: "Custom-made pastel & traditional lehengas." },
                     { name: "Pakeeza Plaza", desc: "Zardosi and mirror-work for all budgets." }
-                ]
+                ],
+                quote: "Here, in these narrow lanes, history is woven into every thread and every sunset."
             },
             crawford: {
                 title: "CRAWFORD MARKET",
-                sub: "DESIGNER BOUTIQUES // MIDDAY",
-                lightColor: 0xffffff, skyTop: '#4a80bc', skyBottom: '#a9dbf4', ground: 0xb5c0b1,
+                sub: "WHOLESALE DISTRICT // MIDDAY",
+                skyTop: '#4ea8de', skyBottom: '#90e0ef', ground: '#e9ecef',
                 shops: [
-                    { name: "Sabyasachi", desc: "High-end ethnic wear & intricate embroidery." },
-                    { name: "Tarun Tahiliani", desc: "Royal heritage Indian fashion." },
-                    { name: "Pernia's Pop-Up", desc: "Curated designer collections." },
-                    { name: "Dhyey- Kapdaa Bazar", desc: "Styling your tradition with latest patterns." },
-                    { name: "Bond Tailors", desc: "Bespoke suits and detailed finishing." },
-                    { name: "Heena Studio", desc: "Creative designer dresses and pret." },
-                    { name: "Avvyanin", desc: "Modern fashion house & exquisite designs." },
-                    { name: "Dorothea Fashion", desc: "Customizable high-quality couture." },
-                    { name: "Sapna Malhotra", desc: "Reasonably priced quality fashion." },
-                    { name: "Mayatri Couture", desc: "Exclusive patterns and warm service." }
-                ]
+                    { name: "Badshah Cold Drink", desc: "Legendary spot for falooda, milkshakes, and refreshments." },
+                    { name: "Central Restaurant", desc: "Classic North Indian cuisine amidst the market hustle." },
+                    { name: "World Star Stationery", desc: "Wholesale stationery, pens, notebooks, and office supplies." },
+                    { name: "Essabhai Fireworks", desc: "Famous dealer for fireworks and celebratory crackers." },
+                    { name: "Sony Gifts N Awards", desc: "Specialists in trophies, corporate gifts, and mementos." },
+                    { name: "Hindustan Scale Co", desc: "Trusted weighing machine dealers for wholesale trade." },
+                    { name: "Nanumal Bhojraj", desc: "Authentic Punjabi vegetarian thalis and meals." },
+                    { name: "Spice Route Traders", desc: "Exotic imported spices, saffron, and dry fruits." },
+                    { name: "Crawford Pet Zone", desc: "Variety of pet supplies, food, and accessories." },
+                    { name: "Textile Hub", desc: "Wholesale cotton, silk materials, and traditional wear." }
+                ],
+                quote: "The vibrant heart of South Mumbai, where every stall holds a story and a bargain."
             },
             bapat: {
                 title: "BAPAT GALLI",
-                sub: "BOUTIQUES & JEWELS // AFTERNOON",
-                lightColor: 0xffeebb, skyTop: '#6896cc', skyBottom: '#e5d79e', ground: 0xd3c49e,
+                sub: "BELGAUM BOUTIQUES // AFTERNOON",
+                skyTop: '#ff9f1c', skyBottom: '#ffbf69', ground: '#f4f1de',
                 shops: [
-                    { name: "Suhagan Boutique", desc: "Premium ethnic wear and alteration." },
-                    { name: "Designers Hub", desc: "Trendy collections and designer wear." },
-                    { name: "Nyra Collection", desc: "Latest fashion trends and fabrics." },
-                    { name: "Prabhavana Boutique", desc: "Exclusive bespoke women's fashion." },
-                    { name: "Isha Wedding Mall", desc: "Complete wedding shopping destination." },
-                    { name: "Sanghvi Creations", desc: "Vibrant ethnic and modern styles." },
-                    { name: "Nepathya Studio", desc: "High-end designer studio." },
-                    { name: "Unnati Boutique", desc: "Elegant and traditional outfits." },
-                    { name: "S D Karekar", desc: "Best gold and silver jewellery." },
-                    { name: "Baneshwarii Jewels", desc: "Premium quality ornaments." }
-                ]
+                    { name: "Nucleus Mall Outlets", desc: "Modern retail, clothing, and accessories." },
+                    { name: "Suhagan Boutique", desc: "Premium ethnic wear, alteration, and bespoke tailoring." },
+                    { name: "Nyra Collection", desc: "Beautiful clothing, accessories, and great discounts." },
+                    { name: "Master Stich Designer", desc: "Vibrant ambiance, unique custom clothing & accessories." },
+                    { name: "Bb Couture", desc: "Beautiful dresses, perfect fitting, and custom gowns." },
+                    { name: "Tulip Designs", desc: "Excellent service, custom stitching, and designer wear." },
+                    { name: "V2 Fashion Store", desc: "Trendy apparel, lifestyle fashion, and modern fits." },
+                    { name: "Shanbhag Chambers", desc: "Traditional fabrics and contemporary designer collections." },
+                    { name: "Isha Wedding Mall", desc: "Complete wedding shopping, renowned saree center." },
+                    { name: "Darbar Galli Market", desc: "Local departmental store with diverse daily needs." }
+                ],
+                quote: "A bustling blend of traditional craftsmanship and modern retail in Belgaum."
             }
         };
 
@@ -514,6 +527,7 @@
 
         let moveForward = false;
         let moveBackward = false;
+        let sprintMultiplier = 1.0;
         let rotateLeft = false;
         let rotateRight = false;
         const velocity = new THREE.Vector3();
@@ -538,24 +552,52 @@
 
         const mFwd = document.getElementById('m-fwd');
         const mRev = document.getElementById('m-rev');
-        mFwd.addEventListener('touchstart', (e)=>{ e.preventDefault(); moveForward = true; });
-        mFwd.addEventListener('touchend', (e)=>{ e.preventDefault(); moveForward = false; });
-        mRev.addEventListener('touchstart', (e)=>{ e.preventDefault(); moveBackward = true; });
-        mRev.addEventListener('touchend', (e)=>{ e.preventDefault(); moveBackward = false; });
+        const mFast = document.getElementById('m-fast');
+
+        // Use pointer events for better cross-browser mobile support
+        mFwd.addEventListener('pointerdown', (e)=>{ e.preventDefault(); moveForward = true; });
+        mFwd.addEventListener('pointerup', (e)=>{ e.preventDefault(); moveForward = false; sprintMultiplier = 1.0; });
+        mFwd.addEventListener('pointerleave', (e)=>{ e.preventDefault(); moveForward = false; sprintMultiplier = 1.0; });
+        
+        mRev.addEventListener('pointerdown', (e)=>{ e.preventDefault(); moveBackward = true; });
+        mRev.addEventListener('pointerup', (e)=>{ e.preventDefault(); moveBackward = false; });
+        mRev.addEventListener('pointerleave', (e)=>{ e.preventDefault(); moveBackward = false; });
+
+        mFast.addEventListener('pointerdown', (e)=>{ 
+            e.preventDefault(); 
+            moveForward = true; 
+            sprintMultiplier = 2.5; // Fast forward speed
+        });
+        mFast.addEventListener('pointerup', (e)=>{ 
+            e.preventDefault(); 
+            moveForward = false; 
+            sprintMultiplier = 1.0; 
+        });
+        mFast.addEventListener('pointerleave', (e)=>{ 
+            e.preventDefault(); 
+            moveForward = false; 
+            sprintMultiplier = 1.0; 
+        });
 
         let isLooking = false;
         let lon = -90, lat = 0, phi = 0, theta = 0;
 
-        document.addEventListener('mousedown', () => isLooking = true);
+        document.addEventListener('mousedown', (e) => {
+            if(!e.target.closest('#ui-layer') && !e.target.closest('#shop-modal') && !e.target.closest('#location-selector')) {
+                isLooking = true;
+            }
+        });
         document.addEventListener('mouseup', () => isLooking = false);
         document.addEventListener('mousemove', (e) => {
             if(isLooking) {
-                lon += e.movementX * 0.2;
-                lat -= e.movementY * 0.2;
+                // Smoother rotation scaling
+                lon += e.movementX * 0.15;
+                lat -= e.movementY * 0.15;
                 lat = Math.max(-85, Math.min(85, lat));
             }
         });
 
+        // Refined touch look mechanics
         let touchStartX = 0, touchStartY = 0, touchLonStart = 0, touchLatStart = 0, isDragging = false;
         
         document.addEventListener('touchstart', (e) => {
@@ -565,18 +607,21 @@
             touchLonStart = lon;
             touchLatStart = lat;
             isDragging = true;
-        }, {passive: true});
+        }, {passive: false});
 
         document.addEventListener('touchmove', (e) => {
             if(!isDragging) return;
+            e.preventDefault(); // Prevent scrolling while looking around
             const dx = e.touches[0].clientX - touchStartX;
             const dy = e.touches[0].clientY - touchStartY;
-            lon = touchLonStart - dx * 0.2;
-            lat = touchLatStart + dy * 0.2;
+            // Smoother scaling for touch
+            lon = touchLonStart - dx * 0.25;
+            lat = touchLatStart + dy * 0.25;
             lat = Math.max(-85, Math.min(85, lat));
-        }, {passive: true});
+        }, {passive: false});
 
         document.addEventListener('touchend', () => { isDragging = false; });
+        document.addEventListener('touchcancel', () => { isDragging = false; });
 
         const raycaster = new THREE.Raycaster();
         const center = new THREE.Vector2(0, 0); 
@@ -611,6 +656,7 @@
             event.target.classList.add('active');
             document.getElementById('loc-title').innerText = LOCATIONS[locKey].title;
             document.getElementById('loc-sub').innerHTML = LOCATIONS[locKey].sub;
+            document.getElementById('quote-text').innerText = `"${LOCATIONS[locKey].quote}"`;
 
             setupLighting(LOCATIONS[locKey]);
             generateEnvironment();
@@ -675,9 +721,13 @@
             if (rotateRight) lon += 60 * delta;
 
             velocity.z -= velocity.z * 10.0 * delta; 
+            
+            // Apply sprint multiplier
+            let speed = 20.0 * sprintMultiplier;
+            
             direction.z = Number(moveForward) - Number(moveBackward);
             direction.normalize();
-            if (moveForward || moveBackward) velocity.z -= direction.z * 20.0 * delta;
+            if (moveForward || moveBackward) velocity.z -= direction.z * speed * delta;
             
             targetZ += velocity.z * delta;
             targetZ = Math.max(-CONFIG.marketLength/2 + 2, Math.min(22, targetZ));
