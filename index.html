@@ -20,17 +20,29 @@
         
         body {
             margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
             background-color: #050301;
             font-family: 'Inter', sans-serif;
             user-select: none;
             -webkit-touch-callout: none;
+            touch-action: none; /* CRITICAL FIX: Stops the browser from hijacking left-to-right swipes */
+        }
+
+        html {
+            width: 100%;
+            height: 100%;
         }
 
         #canvas-container {
-            position: absolute;
-            top: 0; left: 0; width: 100vw; height: 100vh;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            width: 100vw; height: 100vh;
             z-index: 1;
+            touch-action: none; /* Double redundancy */
+            background-color: #050301;
         }
 
         /* UI Overlays */
@@ -605,11 +617,8 @@
                     document.exitFullscreen();
                 } else if (document.webkitExitFullscreen) {
                     document.webkitExitFullscreen();
-                }
-            }
-        });
-
-        let touchStartX = 0, touchStartY = 0, touchLonStart = 0, touchLatStart = 0, isDragging = false;
+        let touchStartX = 0, touchStartY = 0, isDragging = false;
+        let lastTouchX = 0, lastTouchY = 0; // NEW: For perfectly smooth incremental rotation
         let lookTouchId = null; // Track specific finger for looking
         
         document.addEventListener('touchstart', (e) => {
@@ -620,10 +629,15 @@
             // Get the specific touch that just started
             const touch = e.changedTouches[0];
             lookTouchId = touch.identifier;
+            
+            // Track start for tap detection
             touchStartX = touch.clientX;
             touchStartY = touch.clientY;
-            touchLonStart = lon;
-            touchLatStart = lat;
+            
+            // Track last for smooth rotation
+            lastTouchX = touch.clientX;
+            lastTouchY = touch.clientY;
+            
             isDragging = true;
         }, {passive: false});
 
@@ -631,52 +645,50 @@
             if(!isDragging || lookTouchId === null || isModalOpen) return;
             
             // Find the specific touch we are tracking for camera movement
-            let touch = null;
-            for(let i=0; i<e.changedTouches.length; i++) {
-                if(e.changedTouches[i].identifier === lookTouchId) {
-                    touch = e.changedTouches[i];
-                    break;
-                }
-            }
-            if(!touch) return; // The moving finger isn't the look finger
+            const touch = Array.from(e.changedTouches).find(t => t.identifier === lookTouchId);
+            if(!touch) return; 
 
-            e.preventDefault(); // Prevent scrolling while looking around
-            const dx = touch.clientX - touchStartX;
-            const dy = touch.clientY - touchStartY;
-            // Smoother scaling for touch
-            lon = touchLonStart - dx * 0.25;
-            lat = touchLatStart + dy * 0.25;
-            lat = Math.max(-85, Math.min(85, lat));
+            // Prevent browser from trying to scroll or "swipe back" a page
+            if (e.cancelable) e.preventDefault(); 
+            
+            // Calculate movement delta since LAST frame (Incremental tracking)
+            const dx = touch.clientX - lastTouchX;
+            const dy = touch.clientY - lastTouchY;
+            
+            // Apply rotation incrementally (matches mouse behavior exactly)
+            lon -= dx * 0.3; // Horizontal sensitivity
+            lat += dy * 0.3; // Vertical sensitivity
+            lat = Math.max(-85, Math.min(85, lat)); // Clamp up/down
+            
+            // Update last position for the next frame
+            lastTouchX = touch.clientX;
+            lastTouchY = touch.clientY;
         }, {passive: false});
 
         const endTouch = (e) => {
-            for(let i=0; i<e.changedTouches.length; i++) {
-                if(e.changedTouches[i].identifier === lookTouchId) {
-                    
-                    // NEW: Mobile Tap Detection
-                    // If the finger moved less than 10 pixels, treat it as a tap instead of a swipe
-                    const touch = e.changedTouches[i];
-                    const dx = Math.abs(touch.clientX - touchStartX);
-                    const dy = Math.abs(touch.clientY - touchStartY);
-                    
-                    if (dx < 10 && dy < 10 && !isModalOpen) {
-                        clickPointer.x = (touch.clientX / window.innerWidth) * 2 - 1;
-                        clickPointer.y = -(touch.clientY / window.innerHeight) * 2 + 1;
-                        
-                        raycaster.setFromCamera(clickPointer, camera);
-                        const intersects = raycaster.intersectObjects(shopInteractables);
-                        
-                        if (intersects.length > 0) {
-                            lastTapTime = Date.now();
-                            openModal(intersects[0].object.userData.shopData);
-                        }
-                    }
+            const touch = Array.from(e.changedTouches).find(t => t.identifier === lookTouchId);
+            if(!touch) return;
 
-                    isDragging = false;
-                    lookTouchId = null;
-                    break;
+            // NEW: Mobile Tap Detection
+            // If the finger moved less than 10 pixels total from start to end, treat it as a tap
+            const dxTotal = Math.abs(touch.clientX - touchStartX);
+            const dyTotal = Math.abs(touch.clientY - touchStartY);
+            
+            if (dxTotal < 10 && dyTotal < 10 && !isModalOpen) {
+                clickPointer.x = (touch.clientX / window.innerWidth) * 2 - 1;
+                clickPointer.y = -(touch.clientY / window.innerHeight) * 2 + 1;
+                
+                raycaster.setFromCamera(clickPointer, camera);
+                const intersects = raycaster.intersectObjects(shopInteractables);
+                
+                if (intersects.length > 0) {
+                    lastTapTime = Date.now();
+                    openModal(intersects[0].object.userData.shopData);
                 }
             }
+
+            isDragging = false;
+            lookTouchId = null;
         };
 
         document.addEventListener('touchend', endTouch);
@@ -732,6 +744,11 @@
             rotateLeft = false;
             rotateRight = false;
             
+            // CRITICAL FIX: Hard reset touch states so the camera doesn't get locked
+            isDragging = false;
+            lookTouchId = null;
+            isLooking = false;
+            
             document.getElementById('modal-title').innerText = data.name;
             document.getElementById('modal-desc').innerText = data.desc;
             
@@ -762,6 +779,12 @@
 
         window.closeModal = function() {
             isModalOpen = false; // Unlock camera
+            
+            // Hard reset touch tracking upon closing to guarantee a clean slate
+            isDragging = false;
+            lookTouchId = null;
+            isLooking = false;
+            
             document.getElementById('shop-modal').classList.remove('active');
         };
 
@@ -803,13 +826,16 @@
             phi = THREE.MathUtils.degToRad(90 - lat);
             theta = THREE.MathUtils.degToRad(lon);
 
+            // Update physical camera position FIRST
+            camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ + cameraOffset.z, 0.1);
+            camera.position.x = THREE.MathUtils.lerp(camera.position.x, Math.sin(clock.elapsedTime)*0.3, 0.05); 
+            
+            // THEN calculate the look target relative to the new physical position
             const lookTarget = new THREE.Vector3();
             lookTarget.x = camera.position.x + Math.sin(phi) * Math.cos(theta);
             lookTarget.y = camera.position.y + Math.cos(phi);
             lookTarget.z = camera.position.z + Math.sin(phi) * Math.sin(theta);
-
-            camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ + cameraOffset.z, 0.1);
-            camera.position.x = THREE.MathUtils.lerp(camera.position.x, Math.sin(clock.elapsedTime)*0.3, 0.05); 
+            
             camera.lookAt(lookTarget);
 
             raycaster.setFromCamera(center, camera);
