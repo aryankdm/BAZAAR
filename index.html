@@ -617,6 +617,10 @@
                     document.exitFullscreen();
                 } else if (document.webkitExitFullscreen) {
                     document.webkitExitFullscreen();
+                }
+            }
+        });
+
         let touchStartX = 0, touchStartY = 0, isDragging = false;
         let lastTouchX = 0, lastTouchY = 0; // NEW: For perfectly smooth incremental rotation
         let lookTouchId = null; // Track specific finger for looking
