@@ -668,25 +668,7 @@
         const endTouch = (e) => {
             const touch = Array.from(e.changedTouches).find(t => t.identifier === lookTouchId);
             if(!touch) return;
-
-            // NEW: Mobile Tap Detection
-            // If the finger moved less than 10 pixels total from start to end, treat it as a tap
-            const dxTotal = Math.abs(touch.clientX - touchStartX);
-            const dyTotal = Math.abs(touch.clientY - touchStartY);
             
-            if (dxTotal < 10 && dyTotal < 10 && !isModalOpen) {
-                clickPointer.x = (touch.clientX / window.innerWidth) * 2 - 1;
-                clickPointer.y = -(touch.clientY / window.innerHeight) * 2 + 1;
-                
-                raycaster.setFromCamera(clickPointer, camera);
-                const intersects = raycaster.intersectObjects(shopInteractables);
-                
-                if (intersects.length > 0) {
-                    lastTapTime = Date.now();
-                    openModal(intersects[0].object.userData.shopData);
-                }
-            }
-
             isDragging = false;
             lookTouchId = null;
         };
@@ -700,23 +682,43 @@
         const crosshair = document.getElementById('crosshair');
         const clickPointer = new THREE.Vector2();
 
-        document.addEventListener('click', (e) => {
-            if (isModalOpen || Date.now() - lastTapTime < 500) return; // Prevent clicks while open or ghost mobile clicks
-            if(e.target.closest('#shop-modal') || e.target.closest('.loc-arc') || e.target.closest('.m-btn')) return;
+        // BULLETPROOF CLICK & TAP DETECTION
+        let pointerStartX = 0;
+        let pointerStartY = 0;
+        let pointerStartTime = 0;
+
+        // Attach listener specifically to the 3D canvas to avoid UI interference
+        renderer.domElement.addEventListener('pointerdown', (e) => {
+            pointerStartX = e.clientX;
+            pointerStartY = e.clientY;
+            pointerStartTime = Date.now();
+        });
+
+        renderer.domElement.addEventListener('pointerup', (e) => {
+            if (isModalOpen) return;
             
-            // Map screen coordinates to Three.js Normalized Device Coordinates (-1 to +1)
-            clickPointer.x = (e.clientX / window.innerWidth) * 2 - 1;
-            clickPointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
-            
-            raycaster.setFromCamera(clickPointer, camera);
-            const intersects = raycaster.intersectObjects(shopInteractables);
-            
-            // Removed distance limit: If user clicked on a shop from ANY distance, open it
-            if (intersects.length > 0) {
-                openModal(intersects[0].object.userData.shopData);
-            } else if (hoveredShop) {
-                // Fallback for crosshair focus
-                openModal(hoveredShop.userData.shopData);
+            const dx = Math.abs(e.clientX - pointerStartX);
+            const dy = Math.abs(e.clientY - pointerStartY);
+            const dt = Date.now() - pointerStartTime;
+
+            // If the finger/mouse barely moved and the tap was quick, it is a strict CLICK
+            if (dx < 15 && dy < 15 && dt < 600) {
+                clickPointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+                clickPointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+                
+                raycaster.setFromCamera(clickPointer, camera);
+                
+                // Deep scan the entire 3D environment (recursive: true) to guarantee a hit
+                const intersects = raycaster.intersectObjects(environmentGroup.children, true); 
+                
+                for (let i = 0; i < intersects.length; i++) {
+                    const object = intersects[i].object;
+                    // Check if the specific piece of the shop we tapped has data
+                    if (object.userData && object.userData.isShop) {
+                        openModal(object.userData.shopData);
+                        break; // Stop at the first shop we hit
+                    }
+                }
             }
         });
 
