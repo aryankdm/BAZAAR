@@ -33,17 +33,6 @@
             z-index: 1;
         }
 
-        /* Cinematic Letterbox */
-        .letterbox {
-            position: absolute; left: 0; width: 100%; height: 10vh;
-            background: #000; z-index: 20;
-            transition: transform 1.5s ease-in-out;
-        }
-        .letterbox-top { top: 0; transform: translateY(-100%); }
-        .letterbox-bottom { bottom: 0; transform: translateY(100%); }
-        body.cinematic .letterbox-top { transform: translateY(0); }
-        body.cinematic .letterbox-bottom { transform: translateY(0); }
-
         /* UI Overlays */
         #ui-layer, #location-selector, #mobile-controls {
             position: absolute;
@@ -162,8 +151,6 @@
 <body>
 
     <div id="loader">Loading Environment...</div>
-    <div class="letterbox letterbox-top"></div>
-    <div class="letterbox letterbox-bottom"></div>
     <div id="canvas-container"></div>
     <div id="crosshair"></div>
 
@@ -540,7 +527,11 @@
         const cameraOffset = new THREE.Vector3(0, 2.0, 5); 
         camera.position.set(0, 2.0, targetZ + 5);
 
+        let isModalOpen = false;
+        let lastTapTime = 0;
+
         document.addEventListener('keydown', (e) => {
+            if(isModalOpen) return;
             if (e.code === 'KeyW' || e.code === 'ArrowUp') moveForward = true;
             if (e.code === 'KeyS' || e.code === 'ArrowDown') moveBackward = true;
             if (e.code === 'KeyA' || e.code === 'ArrowLeft') rotateLeft = true;
@@ -558,16 +549,17 @@
         const mFast = document.getElementById('m-fast');
 
         // Use pointer events for better cross-browser mobile support
-        mFwd.addEventListener('pointerdown', (e)=>{ e.preventDefault(); moveForward = true; });
+        mFwd.addEventListener('pointerdown', (e)=>{ e.preventDefault(); if(isModalOpen) return; moveForward = true; });
         mFwd.addEventListener('pointerup', (e)=>{ e.preventDefault(); moveForward = false; sprintMultiplier = 1.0; });
         mFwd.addEventListener('pointerleave', (e)=>{ e.preventDefault(); moveForward = false; sprintMultiplier = 1.0; });
         
-        mRev.addEventListener('pointerdown', (e)=>{ e.preventDefault(); moveBackward = true; });
+        mRev.addEventListener('pointerdown', (e)=>{ e.preventDefault(); if(isModalOpen) return; moveBackward = true; });
         mRev.addEventListener('pointerup', (e)=>{ e.preventDefault(); moveBackward = false; });
         mRev.addEventListener('pointerleave', (e)=>{ e.preventDefault(); moveBackward = false; });
 
         mFast.addEventListener('pointerdown', (e)=>{ 
             e.preventDefault(); 
+            if(isModalOpen) return;
             moveForward = true; 
             sprintMultiplier = 2.5; // Fast forward speed
         });
@@ -586,13 +578,14 @@
         let lon = -90, lat = 0, phi = 0, theta = 0;
 
         document.addEventListener('mousedown', (e) => {
+            if(isModalOpen) return;
             if(!e.target.closest('#ui-layer') && !e.target.closest('#shop-modal') && !e.target.closest('#location-selector')) {
                 isLooking = true;
             }
         });
         document.addEventListener('mouseup', () => isLooking = false);
         document.addEventListener('mousemove', (e) => {
-            if(isLooking) {
+            if(isLooking && !isModalOpen) {
                 // Smoother rotation scaling
                 lon += e.movementX * 0.15;
                 lat -= e.movementY * 0.15;
@@ -620,6 +613,7 @@
         let lookTouchId = null; // Track specific finger for looking
         
         document.addEventListener('touchstart', (e) => {
+            if(isModalOpen) return;
             if(e.target.closest('.m-btn') || e.target.closest('#location-selector') || e.target.closest('#shop-modal') || e.target.closest('#ui-layer')) return;
             if(lookTouchId !== null) return; // Ignore if we are already tracking a look touch
             
@@ -634,7 +628,7 @@
         }, {passive: false});
 
         document.addEventListener('touchmove', (e) => {
-            if(!isDragging || lookTouchId === null) return;
+            if(!isDragging || lookTouchId === null || isModalOpen) return;
             
             // Find the specific touch we are tracking for camera movement
             let touch = null;
@@ -665,7 +659,7 @@
                     const dx = Math.abs(touch.clientX - touchStartX);
                     const dy = Math.abs(touch.clientY - touchStartY);
                     
-                    if (dx < 10 && dy < 10) {
+                    if (dx < 10 && dy < 10 && !isModalOpen) {
                         clickPointer.x = (touch.clientX / window.innerWidth) * 2 - 1;
                         clickPointer.y = -(touch.clientY / window.innerHeight) * 2 + 1;
                         
@@ -673,6 +667,7 @@
                         const intersects = raycaster.intersectObjects(shopInteractables);
                         
                         if (intersects.length > 0) {
+                            lastTapTime = Date.now();
                             openModal(intersects[0].object.userData.shopData);
                         }
                     }
@@ -694,6 +689,7 @@
         const clickPointer = new THREE.Vector2();
 
         document.addEventListener('click', (e) => {
+            if (isModalOpen || Date.now() - lastTapTime < 500) return; // Prevent clicks while open or ghost mobile clicks
             if(e.target.closest('#shop-modal') || e.target.closest('.loc-arc') || e.target.closest('.m-btn')) return;
             
             // Map screen coordinates to Three.js Normalized Device Coordinates (-1 to +1)
@@ -728,6 +724,14 @@
         };
 
         window.openModal = function(data) {
+            isModalOpen = true; // Lock camera and walking
+            
+            // Immediately halt all movement so player doesn't wander away while reading
+            moveForward = false;
+            moveBackward = false;
+            rotateLeft = false;
+            rotateRight = false;
+            
             document.getElementById('modal-title').innerText = data.name;
             document.getElementById('modal-desc').innerText = data.desc;
             
@@ -753,13 +757,12 @@
             document.querySelector('#shop-modal button.px-4').classList.remove('text-gray-400');
 
             document.getElementById('shop-modal').classList.add('active');
-            document.body.style.pointerEvents = 'none'; 
             document.getElementById('shop-modal').style.pointerEvents = 'auto';
         };
 
         window.closeModal = function() {
+            isModalOpen = false; // Unlock camera
             document.getElementById('shop-modal').classList.remove('active');
-            document.body.style.pointerEvents = 'auto';
         };
 
         window.switchTab = function(tabId, btn) {
@@ -838,7 +841,6 @@
                 document.getElementById('ui-layer').style.opacity = '1';
                 document.getElementById('location-selector').style.opacity = '1';
                 document.getElementById('mobile-controls').style.opacity = '1';
-                document.body.classList.add('cinematic');
 
                 moveForward = true;
                 setTimeout(() => moveForward = false, 800);
