@@ -61,24 +61,38 @@
 
         /* Location Selection Arcs */
         #location-selector {
-            top: 15vh; left: 50%; transform: translateX(-50%);
-            display: flex; gap: 1rem; pointer-events: auto;
+            top: 5vh; left: 50%; transform: translateX(-50%);
+            display: flex; gap: 1.5rem; pointer-events: auto;
+            align-items: flex-end;
+            height: 120px;
         }
         .loc-arc {
-            background: rgba(20, 15, 10, 0.7);
-            border: 1px solid rgba(212, 175, 55, 0.3);
-            color: #d4af37;
-            padding: 0.5rem 1.5rem;
-            border-radius: 20px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(20,15,10,0.8) 100%);
+            border: 2px solid rgba(212, 175, 55, 0.4);
+            border-bottom: none;
+            color: #ccc;
+            padding: 1rem 0.5rem;
+            width: 100px;
+            height: 80px;
+            border-top-left-radius: 50px;
+            border-top-right-radius: 50px;
             font-family: 'Cinzel', serif;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-align: center;
             cursor: pointer;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(5px);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(8px);
+            display: flex; align-items: flex-end; justify-content: center;
+            box-shadow: inset 0 10px 20px rgba(0,0,0,0.2), 0 5px 15px rgba(0,0,0,0.3);
+            line-height: 1.2;
         }
         .loc-arc:hover, .loc-arc.active {
-            background: rgba(212, 175, 55, 0.2);
+            height: 120px;
+            background: linear-gradient(180deg, rgba(212,175,55,0.4) 0%, rgba(10,5,0,0.9) 100%);
             border-color: #d4af37;
-            box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+            color: #d4af37;
+            box-shadow: 0 0 20px rgba(212,175,55,0.5), inset 0 15px 30px rgba(212,175,55,0.3);
         }
 
         /* Mobile Walk Controls */
@@ -211,12 +225,11 @@
     </div>
 
     <script>
-        // Data for different locations
         const LOCATIONS = {
             chandni: {
                 title: "CHANDNI CHOWK",
                 sub: "BRIDAL & COUTURE // DUSK",
-                color: 0xffaa55,
+                lightColor: 0xffaa55, skyTop: '#5a4f7c', skyBottom: '#ff9a76', ground: 0xc9866e,
                 shops: [
                     { name: "Asiana Couture", desc: "High-end bridal lehengas, contemporary designs." },
                     { name: "Om Parkash Jawahar Lal", desc: "Heritage luxury bridal wear & premium weaves." },
@@ -232,8 +245,8 @@
             },
             crawford: {
                 title: "CRAWFORD MARKET",
-                sub: "DESIGNER BOUTIQUES // MUMBAI",
-                color: 0x88ccff, // Slightly cooler/humid lighting
+                sub: "DESIGNER BOUTIQUES // MIDDAY",
+                lightColor: 0xffffff, skyTop: '#4a80bc', skyBottom: '#a9dbf4', ground: 0xb5c0b1,
                 shops: [
                     { name: "Sabyasachi", desc: "High-end ethnic wear & intricate embroidery." },
                     { name: "Tarun Tahiliani", desc: "Royal heritage Indian fashion." },
@@ -249,8 +262,8 @@
             },
             bapat: {
                 title: "BAPAT GALLI",
-                sub: "BOUTIQUES & JEWELS // BELGAUM",
-                color: 0xffddaa, // Warm afternoon light
+                sub: "BOUTIQUES & JEWELS // AFTERNOON",
+                lightColor: 0xffeebb, skyTop: '#6896cc', skyBottom: '#e5d79e', ground: 0xd3c49e,
                 shops: [
                     { name: "Suhagan Boutique", desc: "Premium ethnic wear and alteration." },
                     { name: "Designers Hub", desc: "Trendy collections and designer wear." },
@@ -271,244 +284,243 @@
 
         const container = document.getElementById('canvas-container');
         const scene = new THREE.Scene();
-        
-        // Add atmospheric fog
-        scene.fog = new THREE.FogExp2(0x1a0d00, 0.04);
+        scene.fog = new THREE.FogExp2(0x1a0d00, 0.035);
 
-        const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 100);
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 150);
         
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // optimize performance
-        // Physical lighting setup
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.2;
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.CineonToneMapping; // Softer anime-like tone mapping
+        renderer.toneMappingExposure = 1.0;
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(renderer.domElement);
 
-        // --- Post Processing ---
         let composer, bloomPass;
         try {
             const renderScene = new THREE.RenderPass(scene, camera);
             bloomPass = new THREE.UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-            bloomPass.threshold = 0.2;
-            bloomPass.strength = 1.2; // intense golden hour glow
+            bloomPass.threshold = 0.5;
+            bloomPass.strength = 0.2; // Severely reduced bloom for vector/anime look
             bloomPass.radius = 0.5;
 
             composer = new THREE.EffectComposer(renderer);
             composer.addPass(renderScene);
             composer.addPass(bloomPass);
         } catch(e) {
-            console.warn("Post-processing failed, falling back to standard renderer.", e);
             composer = null;
         }
 
-        // Create noise texture for dirt/roughness
-        function createNoiseTexture() {
-            const canvas = document.createElement('canvas');
-            canvas.width = 512; canvas.height = 512;
-            const ctx = canvas.getContext('2d');
-            const imgData = ctx.createImageData(512, 512);
-            for (let i = 0; i < imgData.data.length; i += 4) {
-                const val = Math.floor(Math.random() * 255);
-                imgData.data[i] = val; imgData.data[i+1] = val; imgData.data[i+2] = val; imgData.data[i+3] = 255;
-            }
-            ctx.putImageData(imgData, 0, 0);
-            const tex = new THREE.CanvasTexture(canvas);
-            tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
-            tex.repeat.set(4, 4);
-            return tex;
+        function createToonMap() {
+            const colors = new Uint8Array([ 
+                60, 60, 60, 255, 
+                140, 140, 140, 255, 
+                200, 200, 200, 255, 
+                255, 255, 255, 255 
+            ]);
+            const gradientMap = new THREE.DataTexture(colors, 4, 1, THREE.RGBAFormat);
+            gradientMap.needsUpdate = true;
+            gradientMap.magFilter = THREE.NearestFilter;
+            gradientMap.minFilter = THREE.NearestFilter;
+            return gradientMap;
         }
-        const noiseTex = createNoiseTexture();
+        const toonGradient = createToonMap();
 
-        // Create striped awning texture
+        function updateSky(topColor, bottomColor) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 2; canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+            const grad = ctx.createLinearGradient(0,0,0,512);
+            grad.addColorStop(0, topColor);
+            grad.addColorStop(1, bottomColor);
+            ctx.fillStyle = grad;
+            ctx.fillRect(0,0,2,512);
+            scene.background = new THREE.CanvasTexture(canvas);
+            scene.fog.color.set(bottomColor);
+        }
+
         function createStripeTexture(color1, color2) {
             const canvas = document.createElement('canvas');
             canvas.width = 256; canvas.height = 256;
             const ctx = canvas.getContext('2d');
             ctx.fillStyle = color1; ctx.fillRect(0,0,256,256);
             ctx.fillStyle = color2;
-            for(let i=0; i<256; i+=32) ctx.fillRect(i, 0, 16, 256);
+            for(let i=0; i<256; i+=64) ctx.fillRect(i, 0, 32, 256);
             const tex = new THREE.CanvasTexture(canvas);
             tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
             return tex;
         }
 
         let ambientLight, directionalLight;
-        function setupLighting(colorHex) {
+        function setupLighting(locData) {
             if(ambientLight) scene.remove(ambientLight);
             if(directionalLight) scene.remove(directionalLight);
 
-            ambientLight = new THREE.AmbientLight(colorHex, 0.4);
+            // Hemisphere light provides beautiful soft Ghibli ambient occlusion 
+            ambientLight = new THREE.HemisphereLight(locData.skyBottom, locData.ground, 0.7);
             scene.add(ambientLight);
 
-            directionalLight = new THREE.DirectionalLight(colorHex, 3);
-            directionalLight.position.set(10, 8, -15);
+            directionalLight = new THREE.DirectionalLight(locData.lightColor, 1.5);
+            directionalLight.position.set(20, 30, -10);
             directionalLight.castShadow = true;
             directionalLight.shadow.mapSize.width = 2048;
             directionalLight.shadow.mapSize.height = 2048;
             directionalLight.shadow.camera.near = 0.5;
-            directionalLight.shadow.camera.far = 50;
-            directionalLight.shadow.camera.left = -20;
-            directionalLight.shadow.camera.right = 20;
-            directionalLight.shadow.camera.top = 20;
-            directionalLight.shadow.camera.bottom = -20;
+            directionalLight.shadow.camera.far = 100;
+            directionalLight.shadow.camera.left = -30;
+            directionalLight.shadow.camera.right = 30;
+            directionalLight.shadow.camera.top = 30;
+            directionalLight.shadow.camera.bottom = -30;
             scene.add(directionalLight);
             
-            // Adjust fog color based on location
-            scene.fog.color.setHex(colorHex).multiplyScalar(0.2);
+            updateSky(locData.skyTop, locData.skyBottom);
         }
-        setupLighting(LOCATIONS[currentLocation].color);
+        setupLighting(LOCATIONS[currentLocation]);
 
-        const CONFIG = { marketLength: 60, streetWidth: 6, shopWidth: 3.5, shopDepth: 3 };
+        const CONFIG = { marketLength: 60, streetWidth: 6, shopWidth: 3.8, shopDepth: 3.5 };
         let environmentGroup = new THREE.Group();
         scene.add(environmentGroup);
         let shopInteractables = [];
 
-        // Materials
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x332a22, roughnessMap: noiseTex, bumpMap: noiseTex, bumpScale: 0.05, roughness: 0.9 });
-        const woodMat = new THREE.MeshStandardMaterial({ color: 0x4a3b2c, roughnessMap: noiseTex, roughness: 0.8 });
-        
         // Text Generator for Signboards
-        function createSignboardTexture(text) {
+        function createSignboardTexture(text, bgColor = '#222', textColor = '#f4d03f') {
             const canvas = document.createElement('canvas');
             canvas.width = 512; canvas.height = 128;
             const ctx = canvas.getContext('2d');
-            ctx.fillStyle = '#111'; ctx.fillRect(0,0,512,128);
-            ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 4; ctx.strokeRect(4,4,504,120);
-            ctx.fillStyle = '#d4af37';
-            ctx.font = 'bold 36px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.fillStyle = bgColor; ctx.fillRect(0,0,512,128);
+            ctx.strokeStyle = textColor; ctx.lineWidth = 6; ctx.strokeRect(6,6,500,116);
+            ctx.fillStyle = textColor;
+            ctx.font = 'bold 42px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(text, 256, 64);
-            const tex = new THREE.CanvasTexture(canvas);
-            return new THREE.MeshBasicMaterial({ map: tex });
+            return new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(canvas) });
         }
 
         function generateEnvironment() {
-            // Clear existing
             while(environmentGroup.children.length > 0){ 
-                const child = environmentGroup.children[0];
-                environmentGroup.remove(child); 
+                environmentGroup.remove(environmentGroup.children[0]); 
             }
             shopInteractables = [];
 
             // Ground
-            const groundGeo = new THREE.PlaneGeometry(CONFIG.streetWidth * 3, CONFIG.marketLength * 1.5, 64, 128);
+            const groundGeo = new THREE.PlaneGeometry(CONFIG.streetWidth * 4, CONFIG.marketLength * 2);
+            const groundMat = new THREE.MeshToonMaterial({ color: LOCATIONS[currentLocation].ground, gradientMap: toonGradient });
             const ground = new THREE.Mesh(groundGeo, groundMat);
             ground.rotation.x = -Math.PI / 2;
             ground.receiveShadow = true;
             environmentGroup.add(ground);
 
-            // Overhead Wires
-            const wireMat = new THREE.LineBasicMaterial({ color: 0x111111 });
-            for (let i = 0; i < 40; i++) {
-                const points = [];
-                const startZ = -CONFIG.marketLength / 2 + Math.random() * CONFIG.marketLength;
-                const endZ = startZ + (Math.random() * 10 - 5);
-                const sag = Math.random() * 1.5 + 0.5;
-                points.push(new THREE.Vector3(-CONFIG.streetWidth/2, 4, startZ));
-                points.push(new THREE.Vector3(0, 4 - sag, (startZ+endZ)/2));
-                points.push(new THREE.Vector3(CONFIG.streetWidth/2, 4.5, endZ));
-                const curve = new THREE.CatmullRomCurve3(points);
-                const geo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(10));
-                environmentGroup.add(new THREE.Line(geo, wireMat));
+            // 3D Entrance Arch (Entering the Street)
+            const archGrp = new THREE.Group();
+            const pillarGeo = new THREE.CylinderGeometry(0.6, 0.8, 8, 8);
+            const archMat = new THREE.MeshToonMaterial({ color: 0x8b5a45, gradientMap: toonGradient }); // Terracotta
+            const p1 = new THREE.Mesh(pillarGeo, archMat); p1.position.set(-5, 4, 18); p1.castShadow = true; archGrp.add(p1);
+            const p2 = new THREE.Mesh(pillarGeo, archMat); p2.position.set(5, 4, 18); p2.castShadow = true; archGrp.add(p2);
+            
+            const topArchGeo = new THREE.TorusGeometry(5, 0.8, 8, 16, Math.PI);
+            const topArch = new THREE.Mesh(topArchGeo, archMat);
+            topArch.position.set(0, 8, 18);
+            topArch.castShadow = true;
+            archGrp.add(topArch);
+
+            const mainSignMat = createSignboardTexture(LOCATIONS[currentLocation].title, '#d35400', '#fff');
+            const mainSign = new THREE.Mesh(new THREE.BoxGeometry(7, 1.5, 0.4), mainSignMat);
+            mainSign.position.set(0, 9.5, 18);
+            archGrp.add(mainSign);
+            environmentGroup.add(archGrp);
+
+            // Fluffy Ghibli Clouds
+            const cloudGeo = new THREE.SphereGeometry(1, 16, 16);
+            const cloudMat = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: toonGradient });
+            for(let i=0; i<20; i++) {
+                const cloudGrp = new THREE.Group();
+                const puffs = Math.floor(Math.random() * 4) + 3;
+                for(let j=0; j<puffs; j++) {
+                    const puff = new THREE.Mesh(cloudGeo, cloudMat);
+                    const scale = 2 + Math.random() * 3;
+                    puff.scale.set(scale, scale * 0.7, scale);
+                    puff.position.set((Math.random()-0.5)*5, (Math.random()-0.5)*2, (Math.random()-0.5)*4);
+                    cloudGrp.add(puff);
+                }
+                cloudGrp.position.set( (Math.random()-0.5)*80, 15 + Math.random()*15, -20 - Math.random()*60 );
+                environmentGroup.add(cloudGrp);
             }
 
             // Build Shops
             const shopCount = shops.length;
-            const spacing = CONFIG.marketLength / (shopCount/2);
+            const spacing = (CONFIG.marketLength - 10) / (shopCount/2);
 
             for (let i = 0; i < shopCount; i++) {
                 const isLeft = i % 2 === 0;
-                const zPos = -CONFIG.marketLength/2 + Math.floor(i/2) * spacing;
+                const zPos = -CONFIG.marketLength/2 + 5 + Math.floor(i/2) * spacing;
                 const xPos = isLeft ? -CONFIG.streetWidth/2 - CONFIG.shopWidth/2 : CONFIG.streetWidth/2 + CONFIG.shopWidth/2;
                 
                 const shopGrp = new THREE.Group();
                 shopGrp.position.set(xPos, 0, zPos);
                 if(!isLeft) shopGrp.rotation.y = Math.PI;
 
-                // Main Structure
-                const wallGeo = new THREE.BoxGeometry(CONFIG.shopWidth, 3.5, CONFIG.shopDepth);
-                const wallMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughnessMap: noiseTex });
-                wallMat.color.setHSL(Math.random(), 0.3, 0.4);
+                // Main Structure (Pastel Toon Colors)
+                const wallGeo = new THREE.BoxGeometry(CONFIG.shopWidth, 4, CONFIG.shopDepth);
+                const wallMat = new THREE.MeshToonMaterial({ gradientMap: toonGradient });
+                wallMat.color.setHSL(Math.random(), 0.4, 0.7); // Soft pastels
                 const wall = new THREE.Mesh(wallGeo, wallMat);
-                wall.position.y = 3.5/2;
+                wall.position.y = 2;
                 wall.castShadow = true; wall.receiveShadow = true;
                 shopGrp.add(wall);
 
                 // Awning
-                const c1 = `hsl(${Math.random()*360}, 60%, 40%)`;
-                const c2 = `hsl(${Math.random()*360}, 60%, 20%)`;
+                const c1 = `hsl(${Math.random()*360}, 60%, 50%)`;
+                const c2 = `hsl(${Math.random()*360}, 60%, 30%)`;
                 const awningTex = createStripeTexture(c1, c2);
-                const awningGeo = new THREE.PlaneGeometry(CONFIG.shopWidth, 2.5);
-                const awningMat = new THREE.MeshStandardMaterial({ map: awningTex, side: THREE.DoubleSide, roughness: 0.9 });
+                const awningGeo = new THREE.PlaneGeometry(CONFIG.shopWidth + 0.2, 3);
+                const awningMat = new THREE.MeshToonMaterial({ map: awningTex, side: THREE.DoubleSide, gradientMap: toonGradient });
                 const awning = new THREE.Mesh(awningGeo, awningMat);
-                awning.position.set(0, 3, 1.5);
+                awning.position.set(0, 3.5, 1.8);
                 awning.rotation.x = -Math.PI / 3;
                 awning.castShadow = true;
                 shopGrp.add(awning);
 
-                // Signboard (Moved to roof)
+                // Roof Signboard
                 const signMat = createSignboardTexture(shops[i].name.toUpperCase());
-                const signGeo = new THREE.BoxGeometry(CONFIG.shopWidth * 0.9, 0.6, 0.1);
+                const signGeo = new THREE.BoxGeometry(CONFIG.shopWidth * 0.9, 0.8, 0.2);
                 const sign = new THREE.Mesh(signGeo, signMat);
-                sign.position.set(0, 4, 1); // Placed high up
+                sign.position.set(0, 4.8, 1);
                 shopGrp.add(sign);
                 
-                // Signboard supports
-                const supGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.8);
-                const sup1 = new THREE.Mesh(supGeo, woodMat); sup1.position.set(-1, 3.6, 1); shopGrp.add(sup1);
-                const sup2 = new THREE.Mesh(supGeo, woodMat); sup2.position.set(1, 3.6, 1); shopGrp.add(sup2);
+                const supGeo = new THREE.CylinderGeometry(0.06, 0.06, 1);
+                const woodMat = new THREE.MeshToonMaterial({ color: 0x5c4033, gradientMap: toonGradient });
+                const sup1 = new THREE.Mesh(supGeo, woodMat); sup1.position.set(-1.2, 4.3, 1); shopGrp.add(sup1);
+                const sup2 = new THREE.Mesh(supGeo, woodMat); sup2.position.set(1.2, 4.3, 1); shopGrp.add(sup2);
 
                 // Display Window / Glowing Area
-                const displayGeo = new THREE.BoxGeometry(CONFIG.shopWidth * 0.8, 1.5, 1);
-                const displayMat = new THREE.MeshStandardMaterial({ color: 0x222222, emissive: 0x442211, emissiveIntensity: 0.5 });
+                const displayGeo = new THREE.BoxGeometry(CONFIG.shopWidth * 0.8, 2, 1);
+                const displayMat = new THREE.MeshBasicMaterial({ color: 0xffeebb }); // bright glowing window
                 const display = new THREE.Mesh(displayGeo, displayMat);
-                display.position.set(0, 1.2, 1);
+                display.position.set(0, 1.5, 1.6);
                 shopGrp.add(display);
 
-                // Interactive Hitbox (Invisible)
-                const hitGeo = new THREE.BoxGeometry(CONFIG.shopWidth, 3, 2);
+                // Interactive Hitbox
+                const hitGeo = new THREE.BoxGeometry(CONFIG.shopWidth, 4, 3);
                 const hitMat = new THREE.MeshBasicMaterial({ visible: false });
                 const hitbox = new THREE.Mesh(hitGeo, hitMat);
-                hitbox.position.set(0, 1.5, 1);
+                hitbox.position.set(0, 2, 1);
                 hitbox.userData = { isShop: true, shopData: shops[i] };
                 shopGrp.add(hitbox);
                 shopInteractables.push(hitbox);
-
-                // Add Point light for glow
-                const pLight = new THREE.PointLight(0xffaa55, 1, 5);
-                pLight.position.set(0, 2, 1.5);
-                shopGrp.add(pLight);
 
                 environmentGroup.add(shopGrp);
             }
         }
 
-        const dustGeo = new THREE.BufferGeometry();
-        const dustCount = 800;
-        const dustPos = new Float32Array(dustCount * 3);
-        for(let i=0; i<dustCount*3; i+=3) {
-            dustPos[i] = (Math.random() - 0.5) * 15;
-            dustPos[i+1] = Math.random() * 5;
-            dustPos[i+2] = (Math.random() - 0.5) * CONFIG.marketLength;
-        }
-        dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
-        const dustMat = new THREE.PointsMaterial({ color: 0xffcc88, size: 0.05, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending });
-        const dustParticles = new THREE.Points(dustGeo, dustMat);
-        scene.add(dustParticles);
-
         let moveForward = false;
         let moveBackward = false;
         const velocity = new THREE.Vector3();
         const direction = new THREE.Vector3();
-        let targetZ = 15; // Start near the end, looking into market
+        let targetZ = 22; // Start just outside the new 3D arch
 
-        // Camera positioning (Third person, slightly higher)
-        const cameraOffset = new THREE.Vector3(0, 1.8, 4); 
-        camera.position.set(0, 1.8, targetZ + 4);
+        const cameraOffset = new THREE.Vector3(0, 2.0, 5); 
+        camera.position.set(0, 2.0, targetZ + 5);
 
-        // Input Listeners
         document.addEventListener('keydown', (e) => {
             if (e.code === 'KeyW' || e.code === 'ArrowUp') moveForward = true;
             if (e.code === 'KeyS' || e.code === 'ArrowDown') moveBackward = true;
@@ -518,7 +530,6 @@
             if (e.code === 'KeyS' || e.code === 'ArrowDown') moveBackward = false;
         });
 
-        // Mobile Listeners
         const mFwd = document.getElementById('m-fwd');
         const mRev = document.getElementById('m-rev');
         mFwd.addEventListener('touchstart', (e)=>{ e.preventDefault(); moveForward = true; });
@@ -526,10 +537,8 @@
         mRev.addEventListener('touchstart', (e)=>{ e.preventDefault(); moveBackward = true; });
         mRev.addEventListener('touchend', (e)=>{ e.preventDefault(); moveBackward = false; });
 
-        // Mouse look (simplified FPS style)
         let isLooking = false;
-        let lon = -90, lat = 0;
-        let phi = 0, theta = 0;
+        let lon = -90, lat = 0, phi = 0, theta = 0;
 
         document.addEventListener('mousedown', () => isLooking = true);
         document.addEventListener('mouseup', () => isLooking = false);
@@ -542,11 +551,10 @@
         });
 
         const raycaster = new THREE.Raycaster();
-        const center = new THREE.Vector2(0, 0); // Always cast from center of screen
+        const center = new THREE.Vector2(0, 0); 
         let hoveredShop = null;
         const crosshair = document.getElementById('crosshair');
 
-        // Click to open modal
         document.addEventListener('click', (e) => {
             if(e.target.closest('#shop-modal') || e.target.closest('.loc-arc') || e.target.closest('.m-btn')) return;
             if(hoveredShop) openModal(hoveredShop.userData.shopData);
@@ -556,37 +564,43 @@
             currentLocation = locKey;
             shops = LOCATIONS[locKey].shops;
             
-            // Update UI
             document.querySelectorAll('.loc-arc').forEach(el => el.classList.remove('active'));
             event.target.classList.add('active');
             document.getElementById('loc-title').innerText = LOCATIONS[locKey].title;
             document.getElementById('loc-sub').innerHTML = LOCATIONS[locKey].sub;
 
-            // Update Lighting & Fog
-            setupLighting(LOCATIONS[locKey].color);
-            
-            // Regenerate
+            setupLighting(LOCATIONS[locKey]);
             generateEnvironment();
+            targetZ = 22; // Reset position to entrance arch
         };
 
         window.openModal = function(data) {
             document.getElementById('modal-title').innerText = data.name;
             document.getElementById('modal-desc').innerText = data.desc;
             
-            // Generate mock catalog
+            // Generate clean mock catalog layout
             const cat = document.getElementById('tab-catalog');
             cat.innerHTML = '';
             for(let i=1; i<=6; i++) {
                 cat.innerHTML += `
-                    <div class="bg-gray-900 rounded-lg overflow-hidden border border-gray-700 hover:border-[#d4af37] transition cursor-pointer">
-                        <div class="h-32 bg-gray-800 flex items-center justify-center text-4xl">👗</div>
-                        <div class="p-2 text-center text-sm text-gray-300">Design ${i}</div>
+                    <div class="bg-gray-800 rounded-lg overflow-hidden border border-[#d4af37]/40 hover:border-[#d4af37] transition cursor-pointer shadow-lg transform hover:-translate-y-1">
+                        <div class="h-32 bg-gray-700 flex items-center justify-center text-5xl">🛍️</div>
+                        <div class="p-3 text-center text-sm text-gray-200 font-bold bg-gray-900 border-t border-gray-700">Style ${i}</div>
                     </div>
                 `;
             }
 
+            // Force catalog tab to be active
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById('tab-catalog').classList.remove('hidden');
+            document.querySelectorAll('#shop-modal button.px-4').forEach(el => {
+                el.classList.remove('modal-tab-active'); el.classList.add('text-gray-400');
+            });
+            document.querySelector('#shop-modal button.px-4').classList.add('modal-tab-active');
+            document.querySelector('#shop-modal button.px-4').classList.remove('text-gray-400');
+
             document.getElementById('shop-modal').classList.add('active');
-            document.body.style.pointerEvents = 'none'; // stop game interaction
+            document.body.style.pointerEvents = 'none'; 
             document.getElementById('shop-modal').style.pointerEvents = 'auto';
         };
 
@@ -614,17 +628,14 @@
             requestAnimationFrame(animate);
             const delta = Math.min(clock.getDelta(), 0.1);
 
-            // Movement logic
-            velocity.z -= velocity.z * 10.0 * delta; // friction
+            velocity.z -= velocity.z * 10.0 * delta; 
             direction.z = Number(moveForward) - Number(moveBackward);
             direction.normalize();
             if (moveForward || moveBackward) velocity.z -= direction.z * 20.0 * delta;
             
             targetZ += velocity.z * delta;
-            // Bounds check
-            targetZ = Math.max(-CONFIG.marketLength/2 + 2, Math.min(CONFIG.marketLength/2 - 2, targetZ));
+            targetZ = Math.max(-CONFIG.marketLength/2 + 2, Math.min(22, targetZ));
 
-            // Apply camera look
             lat = Math.max(-85, Math.min(85, lat));
             phi = THREE.MathUtils.degToRad(90 - lat);
             theta = THREE.MathUtils.degToRad(lon);
@@ -634,24 +645,14 @@
             lookTarget.y = camera.position.y + Math.cos(phi);
             lookTarget.z = camera.position.z + Math.sin(phi) * Math.sin(theta);
 
-            // Smooth camera follow
             camera.position.z = THREE.MathUtils.lerp(camera.position.z, targetZ + cameraOffset.z, 0.1);
-            camera.position.x = THREE.MathUtils.lerp(camera.position.x, Math.sin(clock.elapsedTime)*0.5, 0.05); // head bob
+            camera.position.x = THREE.MathUtils.lerp(camera.position.x, Math.sin(clock.elapsedTime)*0.3, 0.05); 
             camera.lookAt(lookTarget);
 
-            // Animate dust
-            const positions = dustParticles.geometry.attributes.position.array;
-            for(let i=0; i<dustCount; i++) {
-                positions[i*3+1] += 0.2 * delta; // rise up
-                if(positions[i*3+1] > 5) positions[i*3+1] = 0;
-            }
-            dustParticles.geometry.attributes.position.needsUpdate = true;
-
-            // Raycasting for interaction
             raycaster.setFromCamera(center, camera);
             const intersects = raycaster.intersectObjects(shopInteractables);
             
-            if (intersects.length > 0 && intersects[0].distance < 10) {
+            if (intersects.length > 0 && intersects[0].distance < 12) {
                 if(hoveredShop !== intersects[0].object) {
                     hoveredShop = intersects[0].object;
                     crosshair.classList.add('active');
@@ -663,30 +664,24 @@
                 }
             }
 
-            // Render
             if(composer) composer.render();
             else renderer.render(scene, camera);
         }
 
         window.onload = function() {
             generateEnvironment();
-            
-            // Fake loading delay to let shaders compile
             setTimeout(() => {
                 const loader = document.getElementById('loader');
                 loader.style.opacity = '0';
                 setTimeout(() => loader.style.display = 'none', 1000);
 
-                // Show UI
                 document.getElementById('ui-layer').style.opacity = '1';
                 document.getElementById('location-selector').style.opacity = '1';
                 document.getElementById('mobile-controls').style.opacity = '1';
                 document.body.classList.add('cinematic');
 
-                // Intro movement
-                moveBackward = true;
-                setTimeout(() => moveBackward = false, 800);
-
+                moveForward = true;
+                setTimeout(() => moveForward = false, 800);
             }, 1500);
 
             animate();
@@ -698,7 +693,6 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
             if(composer) composer.setSize(window.innerWidth, window.innerHeight);
         });
-
     </script>
 </body>
 </html>
